@@ -1,0 +1,19 @@
+#Import necessary modules
+from pyspark.sql.functions import *
+
+#Define dataset location
+home_dir = "/user/subhtech099501/Movielens/"
+
+#Create a dataframe on movies.csv file
+movies = spark.read.format("csv") \
+.options(header = True) \
+.options(inferSchema = True) \
+.load(home_dir + "movies.csv") \
+.cache() # Keep the dataframe in memory for faster processing
+
+#Print dataframe schema
+movies.printSchema()
+#list all column names and their datatypes, in tuple format
+movies.dtypes
+#
+movies.schema
