@@ -112,3 +112,8 @@ ratings_agg.alias("t1") \
 .select("t1.movieId", "title", "avg_rating", "count") \
 .limit(10) \
 .show()
+
+
+###################################################################################################
+
+# Show temporary views for current Spark session
