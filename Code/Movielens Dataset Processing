@@ -114,12 +114,92 @@ ratings_agg.alias("t1") \
 .show()
 
 
-###################################################################################################
-
 # Show temporary views for current Spark session
 sql("use subhtech09");
 sql("show tables").show()
 
 movies.createOrReplaceTempView("movies")
 ratings.createOrReplaceTempView("ratings")
+
+# Using SQL statement, find top 10 movies based on the highest average ratings. 
+# Consider only those movies that have at least 100 ratings. 
+# Show movieId, title, average rating and rating count columns.
+sql("select r.movieId, m.title, avg(r.rating) as avg_rating,count(r.movieId) as rating_count \
+from ratings r join movies m on r.movieId = m.movieId \
+group by r.movieId,m.title \
+having count(r.movieId) >= 100 \
+order by avg_rating desc \
+limit 10").show()
+
+###############################
+# EXPLODE and SPLIT --> usage
+###############################
+
+df = spark.createDataFrame([Row(a=1, intlist=[1,2,3], mapfield={"a": "b"})])
+df.show()
++---+---------+--------+
+|  a|  intlist|mapfield|
++---+---------+--------+
+|  1|[1, 2, 3]|[a -> b]|
++---+---------+--------+
+df.select(explode(df.intlist).alias("exploded")).show()
++--------+
+|exploded|
++--------+
+|       1|
+|       2|
+|       3|
++--------+
+
+df2 = spark.createDataFrame([Row(a=1, intlist=["1,2,3"], mapfield={"a": "b"})])
+df2.show()
++---+-------+--------+
+|  a|intlist|mapfield|
++---+-------+--------+
+|  1|[1,2,3]|[a -> b]|
++---+-------+--------+
+df2.select(explode(df2.intlist).alias("exploded")).show()
++--------+
+|exploded|
++--------+
+|   1,2,3|
++--------+
+** The above does not explode, as this is no longer a list of items 1,2,3 but it is now a string "1,2,3" inside a list element
+** To handle this, we need to split then explode
+** But if we apply split(df2.intlist), split will not work on a list. Hence we change the data here.
+
+df2 = spark.createDataFrame([Row(a=1, intlist="1,2,3", mapfield={"a": "b"})])
+df2.show()
+df2.select(explode(split(df2.intlist,",")).alias("exploded")).show()
++--------+
+|exploded|
++--------+
+|       1|
+|       2|
+|       3|
++--------+
+###################################################################33
+
+#Find average rating of each genre (advanced)
+ratings.alias("r") \
+.join(movies.alias("m"), col("r.movieId") == col("m.movieId")) \
+.select(ratings.rating,explode(split(movies.genres,"\|")).alias("genre")) \
+.groupBy(col("genre")) \
+.agg(count(col("genre")).alias("rating_count"), \
+     avg(ratings.rating).alias("avg_rating")) \
+.orderBy(desc("avg_rating")) \
+.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
