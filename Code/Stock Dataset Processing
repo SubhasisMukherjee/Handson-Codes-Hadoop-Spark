@@ -30,5 +30,14 @@ where tmp.rn <= 10
 stocks_last10.show()
 
 # Create a new dataframe stocks_pivot, by pivoting the stocks_last10 dataframe
-stocks_pivot = stocks_last10.groupBy(col("symbol")).pivot(col("date")).agg(max(col("adjclose")))
-stocks_pivot = stocks_last10.groupBy(stocks_last10.symbol).pivot(stocks_last10.date).agg(max(stocks_last10.adjclose))
+stocks_pivot = stocks_last10.groupby("symbol").pivot("date").agg({"adjclose": "max"})
+stocks_pivot.show()
+
+# Prepare new column names and remane
+columns = ["v" + str(i) for i in range(len(stocks_pivot.columns) - 1)]
+columns.insert(0, "symbol")
+columns
+stocks_pivot = stocks_pivot.toDF(*columns)
+stocks_pivot.show()
+
+
