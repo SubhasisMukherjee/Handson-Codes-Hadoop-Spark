@@ -92,8 +92,8 @@ DUMP grouped;
 (iv,{(iv)})
 (no,{(no),(no),(no)})
 
-# Generate a relation where for all rows, the first element is the grouping word, the second element is count of all the
-# word's occurances
+/* Generate a relation where for all rows, the first element is the grouping word, the second element is count of all the
+word's occurances */
 counted  = FOREACH grouped GENERATE group, COUNT(words);
 DUMP counted;
 (.,8)
@@ -143,10 +143,10 @@ DUMP counted;
 (iv,1)
 (no,3)
 
-# Sort the relation 'counted' by the grouping element
+/* Sort the relation 'counted' by the grouping element */
 sorted_counted = ORDER counted BY $1;
 
-# Print the word count, sorted above
+/* Print the word count, sorted above */
 DUMP sorted_counted;
 
 
