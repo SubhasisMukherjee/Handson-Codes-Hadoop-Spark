@@ -1,8 +1,8 @@
-# Load file
+/* Load file */
 file = LOAD 'datasets/pigdata/dropbox-policy.txt' AS (line);
 
-# Create relation of bags, where words of a line is made into tuples and all those tuples are made into a bag, 
-# so a bag would be there for each line
+/* Create relation of bags, where words of a line is made into tuples and all those tuples are made into a bag, 
+so a bag would be there for each line */
 words = FOREACH file GENERATE TOKENIZE(line) AS word;
 dump words;
 ({(Dropbox),(Privacy),(Policy)})
@@ -18,8 +18,8 @@ dump words;
 (uses),(described),(in),(this),(Privacy),(Policy.),(All),(of),(the),(different),(forms),(of),(data),(content),(and),
 (information),(described),(below),(are),(collectively),(referred),(to),(as),(“information.”)})
 
-# Flatten the whole text into one line and split all the words into tuples, so that there would only be tuples, 
-# no bags for lines
+/* Flatten the whole text into one line and split all the words into tuples, so that there would only be tuples, 
+no bags for lines */
 words = FOREACH file GENERATE FLATTEN(TOKENIZE(line)) AS word;
 dump words;
 (Dropbox)
@@ -41,8 +41,8 @@ dump words;
 (procedures)
 
 
-# Generate a relation with group of words, the first element is the word for which grouping is done, 
-# the second element is the bag consisting of all the occurances of the word
+/* Generate a relation with group of words, the first element is the word for which grouping is done, 
+the second element is the bag consisting of all the occurances of the word */
 grouped  = GROUP words BY word;
 DUMP grouped;
 (.,{(.),(.),(.),(.),(.),(.),(.),(.)})
