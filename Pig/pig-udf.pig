@@ -33,7 +33,7 @@ new_age = FOREACH users GENERATE my_sample_udf.increase_age();
 -- output
 2018-09-08 15:55:39,959 [main] ERROR org.apache.pig.tools.grunt.Grunt - ERROR 1070: Could not resolve my_sample_udf.increase_age using imports: [, java.lang., org.apache.pig.builtin., org.apache.pig.impl.builtin.]
 
-/* It seems the changed udf does not take effect when registered with the same alias name, hence register with new alisn name */
+/* It seems the changed udf does not take effect when registered with the same alias name, hence register with new alias name */
 REGISTER 'myudf.py' USING jython AS my_sample_udf2
 --output
 2018-09-08 16:02:18,134 [main] WARN  org.apache.pig.scripting.jython.JythonScriptEngine - pig.cmd.args.remainders is empty. This is not expected unless on testing.
