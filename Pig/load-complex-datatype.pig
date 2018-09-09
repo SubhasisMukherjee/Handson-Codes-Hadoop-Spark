@@ -10,12 +10,39 @@ DUMP data;
 (4,{(4,5),(4,5)},[name#Dinesh,age#25])
 
 -- load seperate columns and display
-a = FOREACH data GENERATE f1;
-DUMP a;
+by_pos = FOREACH data GENERATE f1;
+DUMP by_pos;
 -- output
 (1)
 (2)
 (3)
 (4)
 
-b = FOREACH data GENERATE f2[0],f2[1];
+by_field = FOREACH data GENERATE f2;
+DUMP by_field;
+--output
+({(1,2),(2,3)})
+({(2,3),(4,5)})
+({(3,4),(6,7)})
+({(4,5),(4,5)})
+
+x = FOREACH data GENERATE FLATTEN(f2);
+DUMP x;
+-- output
+(1,2)
+(2,3)
+(2,3)
+(4,5)
+(3,4)
+(6,7)
+(4,5)
+(4,5)
+
+by_map = FOREACH data GENERATE f3#'name';
+DUMP by_map;
+-- output 
+(sudar)
+(muthu)
+(haris)
+(Dinesh)
+
