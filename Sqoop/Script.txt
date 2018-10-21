@@ -1,0 +1,112 @@
+# target-dir must not exist beforehand. if it exists, the command while fail with the same error
+# this command will create the directory while sqooping. 
+# then would put the table data inside this directory as part files
+# there would be no subfolder created inside target-dir with the table name, datafiles would be put directly inside target-dir
+# if target-dir is not provided, sqoop will create a directory in the current working directory with the same name as table name
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--target-dir sqoop_import_dir
+
+
+
+# warehouse-dir may exist beforehand, if does not exist it will be created while sqooping
+# during sqooping, a subfolder would be created inside the warehouse-dir with same name as the table name
+# data would be put inside this subfolder as part files
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--warehouse-dir sqoop_import_dir
+
+
+
+# Selecting specific columns
+# if the tablename directory already exists, sqoop will fail
+# if we use --append option, it will append the new part files inside the same folder as the existing one
+# if a column mentioned in the --column option is not there in the table, sqoop will fail
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--columns "name,age,gender" \
+--warehouse-dir sqoop_import_dir \
+--append
+
+
+# parallellism is controlled by number of mappers
+# there will be that many number of part files as there are mappers, hence in the below case 6 part files will be created
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--columns "name,age,gender" \
+--warehouse-dir sqoop_import_dir \
+--num-mappers 6
+
+
+# Storing data in SequenceFiles, and setting the generated class name to com.sqoopex.userclass
+# a java source file will be generated as userclass.java and stored in the path ./com/sqoopex/
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--warehouse-dir sqoop_import_dir \
+--class-name com.sqoopex.userclass \
+--as-sequencefile
+
+
+# Specifying the delimiters to use in a text-mode import
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--warehouse-dir sqoop_import_dir \
+--fields-terminated-by '\t' \
+--lines-terminated-by '\n' \
+--optionally-enclosed-by '\"'
+
+
+# import data into hive directly. a table with the same name as the source table will be created in 'default' database
+# to create the table in a specific database, mention the --hive-table option as 'database.table'
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--hive-import \
+--hive-table 'subhtech099501.usertbl'
+
+
+# import record meeting specific creterion
+# the number of part files would be same as number of mappers, even if some files are empty
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--warehouse-dir sqoop_import_dir \
+--where "age>=14"
+
+
+# seting splitting column
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--warehouse-dir sqoop_import_dir \
+--split-by age
+
