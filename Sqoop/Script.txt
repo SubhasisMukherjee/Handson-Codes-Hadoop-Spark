@@ -81,6 +81,9 @@ sqoop import \
 
 # import data into hive directly. a table with the same name as the source table will be created in 'default' database
 # to create the table in a specific database, mention the --hive-table option as 'database.table'
+# if the hive table is precreated and the hive table has less number of columns than the mysql table, still the job will not fail, the #columns which are there in the hive table, will be populated
+# if the hive table is precreated and the hive table has more number of columns than the mysql table, still the job will not fail, the #columns which are not there in the mysql table, will be populated with 'NULL' string
+
 sqoop import \
 --connect jdbc:mysql://ip-172-31-20-247/sqoopex \
 --username sqoopuser \
@@ -109,4 +112,28 @@ sqoop import \
 --table user \
 --warehouse-dir sqoop_import_dir \
 --split-by age
+
+
+# incremental import on user_id column
+# append mode is used in --incremental when table has continually rows being added
+# --last-value has the value which has been already imported
+# at the end of an incremental import, the value which should be specified as --last-value for a subsequent import is printed to the screen
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--warehouse-dir sqoop_import_dir \
+--incremental append \
+--check-column user_id \
+--last-value 6
+
+# output 
+18/10/22 05:29:53 INFO tool.ImportTool: Incremental import complete! To run another incremental import of all data following this import, supply the following arguments:
+18/10/22 05:29:53 INFO tool.ImportTool:  --incremental append
+18/10/22 05:29:53 INFO tool.ImportTool:   --check-column user_id
+18/10/22 05:29:53 INFO tool.ImportTool:   --last-value 7
+18/10/22 05:29:53 INFO tool.ImportTool: (Consider saving this with 'sqoop job --create')
+
 
