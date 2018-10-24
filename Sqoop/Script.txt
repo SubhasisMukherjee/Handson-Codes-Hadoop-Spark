@@ -137,3 +137,53 @@ sqoop import \
 18/10/22 05:29:53 INFO tool.ImportTool: (Consider saving this with 'sqoop job --create')
 
 
+# import all the tables present in retail_db database of mysql
+sqoop import-all-tables \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--warehouse-dir sqoop_import_dir
+
+# above command got an error "ERROR tool.ImportAllTablesTool: Encountered IOException running import job: java.io.IOException: #Generating splits for a textual index column allowed only in case of "-Dorg.apache.sqoop.splitter.allow_text_splitter=true" property #passed as a parameter". It looks like it is trying to do an internal split by, trying to mitigate this with --autoreset-to-one-mapper
+# need to delete the table folders present from previous command
+
+sqoop import-all-tables \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--warehouse-dir sqoop_import_dir \
+--autoreset-to-one-mapper
+
+# the above didnt solve the issue, hence trying -Dorg.apache.sqoop.splitter.allow_text_splitter=true
+sqoop import-all-tables \
+-D org.apache.sqoop.splitter.allow_text_splitter=true \
+--connect jdbc:mysql://ip-172-31-20-247/retail_db \
+--username sqoopuser \
+--password NHkkP876rp \
+--warehouse-dir sqoop_import_dir \
+--autoreset-to-one-mapper
+
+# import all table, excluding a list of tables
+sqoop import-all-tables \
+-D org.apache.sqoop.splitter.allow_text_splitter=true \
+--connect jdbc:mysql://ip-172-31-20-247/retail_db \
+--username sqoopuser \
+--password NHkkP876rp \
+--warehouse-dir sqoop_import_dir \
+--autoreset-to-one-mapper \
+--exclude-tables countryregion,countryregioncurrency,creditcard,culture,currency,currencyrate,customer,customeraddress,customers,databaselog,dataframe_cust,department,departments,document,emp,employee,errorlog,illustration,individual,jobcandidate,location,order_items,order_items_csm,order_items_npk,orders,orders_csm,orders_csm_pk,orders_csm_stg,orders_test,productcategory,productcosthistory,productdescription,productdocument,productinventory,productlistpricehistory,productmodel,productmodelillustration,productmodelproductdescriptionculture,productphoto,productproductphoto,productreview,products,productsubcategory,productvendor,purchaseorderdetail,purchaseorderheader,salesorderdetail,salesorderheader,salesorderheadersalesreason,salesperson,salespersonquotahistory,salesreason,salestaxrate,salesterritory,salesterritoryhistory,scrapreason
+
+
+# importing the above tables in Hive, in subhtech099501 database
+sqoop import-all-tables \
+-D org.apache.sqoop.splitter.allow_text_splitter=true \
+--connect jdbc:mysql://ip-172-31-20-247/retail_db \
+--username sqoopuser \
+--password NHkkP876rp \
+--warehouse-dir sqoop_import_dir \
+--autoreset-to-one-mapper \
+--hive-import \
+--hive-overwrite \
+--create-hive-table \
+--hive-database subhtech099501 \
+--exclude-tables countryregion,countryregioncurrency,creditcard,culture,currency,currencyrate,customer,customeraddress,customers,databaselog,dataframe_cust,department,departments,document,emp,employee,errorlog,illustration,individual,jobcandidate,location,order_items,order_items_csm,order_items_npk,orders,orders_csm,orders_csm_pk,orders_csm_stg,orders_test,productcategory,productcosthistory,productdescription,productdocument,productinventory,productlistpricehistory,productmodel,productmodelillustration,productmodelproductdescriptionculture,productphoto,productproductphoto,productreview,products,productsubcategory,productvendor,purchaseorderdetail,purchaseorderheader,salesorderdetail,salesorderheader,salesorderheadersalesreason,salesperson,salespersonquotahistory,salesreason,salestaxrate,salesterritory,salesterritoryhistory,scrapreason
