@@ -1,1 +1,10 @@
 
+# export already imported data
+sqoop export \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user_export \
+--export-dir sqoop_import_dir/user
+
+
