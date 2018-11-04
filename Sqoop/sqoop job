@@ -1,1 +1,18 @@
+# Create job
+sqoop job --create myjob \
+-- import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--target-dir sqoop_import_dir
+
+# List job
+sqoop job --list
+
+# Display information about the job
+sqoop job --show myjob
+
+# Execute the job
+sqoop job --exec myjob
 
