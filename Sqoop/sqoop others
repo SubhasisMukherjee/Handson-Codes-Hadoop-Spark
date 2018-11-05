@@ -28,6 +28,31 @@ sqoop create-hive-table \
 --hive-table subhtech099501.user_hive 
 
 ------------------------------------------------------------------------------
+# Sqoop eval
+sqoop eval \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--query "SELECT * FROM user LIMIT 10"
 
+# Sqoop eval can be used to run insert query
+sqoop eval \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--query "INSERT INTO user VALUES(8,'Debopriya',32,'India','F')"
 
+# Sqoop list databases
+sqoop list-databases \
+--connect jdbc:mysql://ip-172-31-20-247/ \
+--username sqoopuser \
+--password NHkkP876rp 
 
+# Sqoop list tables
+sqoop list-tables \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp 
+
+# Sqoop version
+sqoop version
