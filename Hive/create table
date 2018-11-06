@@ -1,0 +1,112 @@
+# create table at a user-defined location
+create table mytab(a int,b int,c int)
+location '/user/mydata'
+
+# load file from local to hive table
+load data local inpath 'file1' into table mytab;
+load data local inpath 'file2' into table mytab;
+
+hadoop fs -ls /user/mytab
+output
+------
+/user/mytab/file1
+/user/mytab/file2
+
+# overwrite the existing data with a new datafile
+load data local inpath 'file3' overwrite into table mytab;
+
+hadoop fs -ls /user/mytab
+output
+------
+/user/mytab/file3
+
+# mytab is expecting '\001' as delimited by default in the backend file. If the actual file
+# is having other delimiter, the table will be unable to parse the datafile and will show
+# all the table fields as NULL
+# to handle this, need to set table delimiter
+
+create table outtab (a int, b int, c int)
+row format delimited
+fields terminated by ','
+
+# if the datafile has collection of homogeneous items in a column like below,
+# ravi,25,btech#mtech
+# rani,26,msc#mba#bsc
+# if we mention only fields terminated by ',', it will not handle the collection
+# delimited by '#'. hence need to mention collection item delimiter
+# data type for homogeneous items' collection is array
+
+create table tabx
+(name string, age int, qual array<string>)
+row format delimited
+fields terminated by ','
+collection items terminated by '#'
+
+load data local inpath 'file1' into table tabx;
+
+hive> select * from tabx;
+OK
+ravi    25      ["btech","mtech"]
+rani    26      ["bsc","msc","mba"]
+Time taken: 0.269 seconds, Fetched: 2 row(s)
+
+# handling collection of heterogeneous elements
+# ravi,25,btech#nu#eee#2012#72
+# rani,26,mtech#ou#ece#2011#69
+
+create table taby
+(name string, age int, qual struct<q:string, u:string, b:string, y:int, p:int>)
+row format delimited
+fields terminated by ','
+collection items terminated by '#';
+
+load data local inpath 'file1' into table taby;
+
+hive> select * from taby;
+OK
+ravi    25      {"q":"btech","u":"nu","b":"eee","y":2012,"p":72}
+rani    26      {"q":"mtech","u":"ou","b":"ece","y":2011,"p":69}
+Time taken: 0.047 seconds, Fetched: 2 row(s)
+
+hive> select name,qual.q,qual.p from taby;
+OK
+ravi    btech   72
+rani    mtech   69
+Time taken: 0.077 seconds, Fetched: 2 row(s)
+
+# handle collection which have multiple pairs and each pair is delimited
+# ravi,btech$90#mtech$80,35
+# rani,bsc$70#msc$69#mba$60,42
+
+create table tabz
+(name string, qual map<string,int>, age int)
+row format delimited
+fields terminated by ','
+collection items terminated by '#'
+map keys terminated by '$';
+
+load data local inpath 'file1' into table tabz;
+
+hive> select * from tabz;
+OK
+ravi    {"btech":90,"mtech":80} 35
+rani    {"bsc":70,"msc":69,"mba":60}    42
+Time taken: 0.044 seconds, Fetched: 2 row(s)
+
+# store table datafile in different file formats
+create table tabu (a int, b int, c int) stored as 'textFile';
+create table tabu (a int, b int, c int) stored as 'sequenceFile';
+create table tabu (a int, b int, c int) stored as 'rc';
+create table tabu (a int, b int, c int) stored as 'orc';
+create table tabu (a int, b int, c int) stored as 'parquet';
+
+# Index creation
+create index idx on emp(id1);
+
+# Create view
+create view v_user as select user_id,name,age from usertbl where gender = 'M';
+
+# Hive UDF can be created with 'create temporary function' syntax. but that 
+# is valid only for UDFs written in java. For UDF written in python there is 
+# another code file in this same directory. Pls check.
+
