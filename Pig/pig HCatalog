@@ -1,0 +1,63 @@
+# pull the table from hive alongwith its schema, do some transformation 
+# in pig and put the data back into hive. all of these may be done using HCatalog
+# hence this is HIVE AND PIG INTEGRATION USING HCATALOG
+# problem statement is, take data from hive, do some transformation whose output 
+# will match some table schema in hive and export the filtered record in that table in hive
+
+# create a output table in hive which has a subset of columns of user table
+create table subhtech099501.pig_user_hcatalog as 
+select user_id, name, age, gender from subhtech099501.usertbl where 1 = 2;
+
+# start pig in HCatalog mode, this will put all the HCatalog libraries in pig lib path
+pig -useHCatalog
+
+# load empty ooutput table to see he schema
+user_rel = LOAD 'subhtech099501.pig_user_hcatalog' USING org.apache.hive.hcatalog.pig.HCatLoader();
+
+# show the schema
+DESCRIBE user_rel;
+
+user_rel: {user_id: int,name: chararray,age: int,gender: chararray}
+
+# load user table
+user_rel2 = LOAD 'subhtech099501.usertbl' USING org.apache.hive.hcatalog.pig.HCatLoader();
+DESCRIBE user_rel2;
+user_rel2: {user_id: int,name: chararray,age: int,country: chararray,gender: chararray}
+
+DUMP user_rel2;
+(7,subhasis,33,India,M)
+(8,Debopriya,32,India,F)
+(3,Rachel,15,India,F)
+(4,Raju,14,India,M)
+(5,srinu,13,India,M)
+(6,padma,13,India,F)
+(1,Tom,20,India,M)
+(2,Rick,5,India,M)
+
+columns = FOREACH user_rel2 GENERATE user_id,name,age,gender;
+filtered = FILTER columns BY gender == 'M';
+DUMP filtered;
+(7,subhasis,33,M)
+(4,Raju,14,M)
+(5,srinu,13,M)
+(1,Tom,20,M)
+(2,Rick,5,M)
+
+# store the processed relation from pig into hive output table
+STORE filtered INTO 'subhtech099501.pig_user_hcatalog' USING org.apache.hive.hcatalog.pig.HCatStorer();
+
+Input(s):
+Successfully read 8 records (155 bytes) from: "subhtech099501.usertbl"
+
+Output(s):
+Successfully stored 5 records (63 bytes) in: "subhtech099501.pig_user_hcatalog"
+
+hive> select * from subhtech099501.pig_user_hcatalog;
+OK
+7       subhasis        33      M
+4       Raju    14      M
+5       srinu   13      M
+1       Tom     20      M
+2       Rick    5       M
+Time taken: 0.05 seconds, Fetched: 5 row(s)
+
