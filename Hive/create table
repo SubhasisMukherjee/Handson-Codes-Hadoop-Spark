@@ -110,3 +110,19 @@ create view v_user as select user_id,name,age from usertbl where gender = 'M';
 # is valid only for UDFs written in java. For UDF written in python there is 
 # another code file in this same directory. Pls check.
 
+# alter table
+alter table tabx add columns(a int, b int); 
+
+hive> select * from tabx;
+OK
+ravi    25      ["btech","mtech"]       NULL    NULL
+rani    26      ["bsc","msc","mba"]     NULL    NULL
+
+
+# to update the null column, we take the indirect path of insert overwrite
+insert overwrite table tabx select name, age, qual, age+10, age+20 from tabx;
+
+hive> select * from tabx;
+OK
+ravi    25      ["btech","mtech"]       35      45
+rani    26      ["bsc","msc","mba"]     36      46
