@@ -1,0 +1,34 @@
+# HCatalog to import table in ORC format
+sqoop import --help
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--driver com.mysql.jdbc.Driver \
+--hcatalog-database subhtech099501 \
+--hcatalog-table user_hive_hcatalog \
+--drop-and-create-hcatalog-table \
+--hcatalog-storage-stanza "stored as orcfile"
+
+
+# for getting data into a partitiioned table, we need to create the partitioned table manually.
+# after which the the below will populate the table by import
+
+create table user_hive_hcatalog
+(user_id int,
+ name string,
+ age int,
+ country string)
+partitioned by (gender string);
+
+sqoop import \
+--connect jdbc:mysql://ip-172-31-20-247/sqoopex \
+--username sqoopuser \
+--password NHkkP876rp \
+--table user \
+--driver com.mysql.jdbc.Driver \
+--hcatalog-database subhtech099501 \
+--hcatalog-table user_hive_hcatalog \
+--hcatalog-storage-stanza "stored as orcfile"
