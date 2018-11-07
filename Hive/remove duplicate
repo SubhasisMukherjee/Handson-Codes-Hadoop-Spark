@@ -1,0 +1,49 @@
+# the below process of removing duplicate is handy for tables which has a large number of columns
+# so that writing a lot of distincts would be difficult
+
+# input file
+name  age
+----------
+ravi  30
+ravi  30
+rani  28
+rani  28
+rani  28
+rani  28
+
+# create table to load data
+create table samp (name string, age int)
+row format delimited
+fields terminated by '\t';
+
+# load dulpicate data
+load data local inpath 'file' into table samp;
+
+# get the hdfs location of the datafile for samp table
+describe extended samp;
+location:hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/samp
+
+# create dummy table, which has only one column
+# hence when data loaded into this table, it will consider the whole row '
+# as a single column
+
+create table dummy (line string);
+
+# load datafile from hdfs location of samp table into dummy table.
+# hence the hdfs files for samp table would be deleted and the table 
+# would become empty
+
+load data inpath 'hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/samp' into table dummy;
+
+# apply distinct on the column and insert overwrite into the same dummy table
+insert overwrite table dummy select distinct(line) from dummy;
+
+describe extended dummy;
+location:hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dummy
+
+# load data file from dummy into samp
+load data inpath 'hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dummy' into table samp;
+
+
+
+
