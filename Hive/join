@@ -1,0 +1,139 @@
+cat emp
+101,aa,30000,m,11
+102,bb,40000,m,12
+103,cc,90000,f,13
+104,dd,100000,m,12
+105,ee,200000,f,14
+106,ff,200000,m,14
+109,nnnn,50000,f,11
+
+cat dept
+11,marketing,hyd
+12,hr,del
+13,finance,hyd
+20,admin,del
+21,production,hyd
+
+create table emp (id int, name string, sal int, sex string, dno int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'emp' into table emp;
+
+create table dept(dno int, dname string, dloc string)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'dept' into table dept;
+
+create table edinfo (id int, name string, sal int, sex string, dname string, dloc string, dno1 int, dno2 int)
+row format delimited
+fields terminated by ',';
+
+insert into table edinfo
+select id, name, sal, sex, dname, dloc, l.dno, r.dno
+from emp l full outer join dept r
+on (l.dno = r.dno);
+
+# get total salary citywise
+select dloc, sum(l.sal) from 
+emp l join dept r
+on l.dno = r.dno
+group by dloc;
+
+select dloc, sum(sal) from edinfo group by dloc;
+
+create table swengg(id int, name string, sal int, sex string, pid int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'emp' into table swengg;
+
+create table projects(pid int, pname string, loc string)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'dept' into table projects;
+
+# we want to find budget for project teams as well as for unallocated resources
+create table prengg (pid1 int, pid2 int, sal int);
+
+insert overwrite table prengg
+select l.pid, r.pid, sal
+from swengg l full outer join projects r
+on (l.pid = r.pid);
+
+hive> select * from prengg;
+OK
+11      11      50000
+11      11      30000
+12      12      100000
+12      12      40000
+13      13      90000
+14      NULL    200000
+14      NULL    200000
+NULL    20      NULL
+NULL    21      NULL
+
+create table transformed(stat string, sal int);
+
+insert overwrite table transformed 
+select if(pid2 is null, 'bench team',
+          if(pid1 is null, 'bench project', 'working')), 
+       if(sal is null, 0, sal)
+from prengg;
+      
+hive> select * from transformed;
+OK
+working 50000
+working 30000
+working 100000
+working 40000
+working 90000
+bench team      200000
+bench team      200000
+bench project   0
+bench project   0
+
+create table projectsal( stat string, sal int)
+row format delimited
+fields terminated by ',';
+
+insert overwrite table projectsal select stat, sum(sal) from transformed group by stat;
+
+hive> select * from projectsal;
+OK
+bench project   0
+bench team      400000
+working 310000
+
+# handling data with duplicates
+hive> select * from emp;
+OK
+101     aa      30000   m       11
+102     bb      40000   m       12
+103     cc      90000   f       13
+104     dd      100000  m       12
+105     ee      200000  f       14
+106     ff      200000  m       14
+109     nnnn    50000   f       11
+201     aaaaa   200000  m       11
+202     eee     100000  f       12
+203     eeeee   100000  f       12
+204     uipo    90000   m       11
+
+select * from emp
+order by sal desc
+limit 3;
+
+201     aaaaa   200000  m       11
+106     ff      200000  m       14
+105     ee      200000  f       14
+
+# the above gives top 3 salary, but all of them are 200000, hence missing actual top 3
+# need to handle that using join
+
+select name, l.sal
+from emp l join
+(select distinct(sal) from emp order by sal desc limit 3) r
+on (l.sal = r.sal);
