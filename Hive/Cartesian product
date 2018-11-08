@@ -1,3 +1,44 @@
 # Hive does not support non-equi join. Hence condition like l.dno = r.dno is valid,
 # but l.do > r.dno is not valid. Cartesian product is used to achieve this.
+# Cartesian product can be used in cases where different rows from the same table '
+# need to be compared 
 
+
+create table emp (id int, name string, sal int, sex string, dno int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'emp' into table emp;
+
+create table temp (sal int, avg int);
+
+# create table to hold average against each row. The inner query will give the average 
+# salary, which when joined with main table, gives avg salary against individual salary
+
+insert into table temp
+select sal,avg from emp l join (select avg(sal) as avg from emp) r;
+
+hive> select * from temp;
+OK
+40000   60000
+50000   60000
+90000   60000
+100000  60000
+20000   60000
+
+alter table temp add columns(stat string);
+
+insert overwrite table temp
+select sal, avg, if(sal>=avg,'Above','Below') from temp;
+
+hive> select * from temp;
+OK
+40000   60000   Below
+50000   60000   Below
+90000   60000   Above
+100000  60000   Above
+20000   60000   Below
+
+select stat,count(*) from temp group by stat;
+Above   2
+Below   3
