@@ -1,0 +1,115 @@
+# in hive, we have only 'union all' ('union' is not there)
+
+emp1
+emp2
+emp3
+
+case 1) table schema is same.
+
+create table new like emp1;
+
+insert into table new
+select * from emp1
+union
+select * from emp2
+union
+select * from emp3;
+
+# case 2) schema is different
+# tab1-> name, city
+# tab2 -> city,name
+# mention columns explicitly, also mention the same column sequence. 
+
+
+select name,city from tab1
+union all
+select name,city from tab2;
+
+# case 3) table had different new columns
+# tabx -> name,city,sex
+# taby -> name, city,age
+# create table to hold union result
+
+create table tabz (name string, age int, sex string, city string);
+insert into table tabx
+select name, null as age, sex, city from tabx
+union all
+select name, age, null as sex, city from tabx;
+
+
+# merge 2 tables with incompatible schema. first table will be loaded from 2 files
+# with same file format and delimiter. second table will be loaded from 1 file with 
+# another format and delimiter
+
+cat file1
+101,aaa,100000
+102,bbb,200000
+103,ccc,300000
+
+cat file2
+104,dd,700000
+105,eee,800000
+106,ssss,900000
+
+cat file3
+201     900000  iiii
+202     300000  jjjj
+203     100000  kkkk
+
+create table info (id int, name string, sal int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'file1' into table info;
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/info
+Found 1 items
+-rwxrwxrwx   3 subhtech099501 hadoop         45 2018-11-08 09:08 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/info/file1
+
+load data local inpath 'file2' into table info;
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/info
+Found 2 items
+-rwxrwxrwx   3 subhtech099501 hadoop         45 2018-11-08 09:08 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/info/file1
+-rwxrwxrwx   3 subhtech099501 hadoop         45 2018-11-08 09:12 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/info/file2
+
+create table dummy ( id int, sal int, name string)
+row format delimited
+fields terminated by '\t';
+
+load data local inpath 'file3' into table dummy;
+
+# process to marge the 2 tables
+create table temp like info;
+
+insert overwrite table temp
+select id, name, sal from dummy;
+
+hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/temp
+Found 1 items
+-rwxrwxrwx   3 subhtech099501 hadoop         48 2018-11-08 09:19 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/temp/000000_0
+
+# to merge the tables dummy and info, instead of using merge command, we can copy the backend file
+# from dummy's hdfs path to info's path
+
+hadoop fs -cp hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/temp/000000_0 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/info
+
+hive> select * from info;
+OK
+201     iiii    900000
+202     jjjj    300000
+203     kkkk    100000
+101     aaa     100000
+102     bbb     200000
+103     ccc     300000
+104     dd      700000
+105     eee     800000
+106     ssss    900000
+
+
+
+
+
+
+
+
