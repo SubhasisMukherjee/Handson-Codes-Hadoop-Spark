@@ -1,0 +1,3 @@
+# Hive does not support non-equi join. Hence condition like l.dno = r.dno is valid,
+# but l.do > r.dno is not valid. Cartesian product is used to achieve this.
+
