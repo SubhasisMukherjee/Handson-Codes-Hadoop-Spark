@@ -1,0 +1,225 @@
+create table profile1(id int, name string, age int, qual array<string>, city string)
+row format delimited
+fields terminated by ','
+collection items terminated by '#';
+
+load data local inpath 'prof1' into table profile1;
+
+hive> select * from profile1;
+OK
+101     Ravi    30      ["btech","mtech","phd"] hyd
+102     Rani    25      ["bsc","msc","mtech"]   del
+
+hive> select name, qual[0] from profile1;
+OK
+Ravi    btech
+Rani    bsc
+
+hive> select name, size(qual) from profile1;
+OK
+Ravi    3
+Rani    3
+
+# flatten elements. explode() flatten array elements into different rows
+hive> select explode(qual) as q from profile1;
+OK
+btech
+mtech
+phd
+bsc
+msc
+mtech
+
+create table qtab(qual string);
+insert into table qtab select explode(qual) as q from profile1; 
+
+# UDTF example. first col is cust_id, second col is transaction amts for each transaction
+cat sales
+c101,10#20#100
+c102,100#150
+c103,300#500#800#100
+c101,600#400
+
+# calculate total bill for each customer
+create table trans(cid string, price array<int>)
+row format delimited
+fields terminated by ','
+collection items terminated by '#';
+
+load data local inpath 'sales' into table trans;
+
+hive> select * from trans;
+OK
+c101    [10,20,100]
+c102    [100,150]
+c103    [300,500,800,100]
+c101    [600,400]
+
+# to get total for each customer, we need data flattened in the form
+# c101  10
+# c101  20
+# c101  100
+# c101  600
+# c101  400
+# but UDTF(col) and general column can not be called together
+
+hive> select cid,explode(price) from trans;
+FAILED: SemanticException [Error 10081]: UDTF's are not supported outside the SELECT clause, nor nested in expressions
+
+# to solve this, we use lateral view alongwith UDTF
+hive> select cid, mypr from trans
+    > lateral view explode(price) p as mypr;
+OK
+c101    10
+c101    20
+c101    100
+c102    100
+c102    150
+c103    300
+c103    500
+c103    800
+c103    100
+c101    600
+c101    400
+
+create table strans(cid string, price int);
+
+insert into table strans
+select cid, mypr from trans
+lateral view explode(price) p as mypr;
+
+hive> select cid, sum(price) from strans group by cid;
+c101    1130
+c102    250
+c103    1700
+
+# Handling STRUCT. the file has a field with heterogeneous datatype
+cat prof2
+Ravi,30,Rani#25#del,hyd
+Raghu,35,Sailu#23#hyd,del
+
+create table profile2 (name string, age int, wife struct<name:string, age:int, city:string>, city string)
+row format delimited
+fields terminated by ','
+collection items terminated by '#';
+
+load data local inpath 'prof2' into table profile2;
+
+hive> select * from profile2;
+OK
+Ravi    30      {"name":"Rani","age":25,"city":"del"}   hyd
+Raghu   35      {"name":"Sailu","age":23,"city":"hyd"}  del
+
+hive> select name,wife.name from profile2;
+OK
+Ravi    Rani
+Raghu   Sailu
+
+create table couples (hname string, wname string, hage int, wage int,hcity string, wcity string)
+row format delimited
+fields terminated by '\t';
+
+insert into table couples 
+select name,wife.name,age,wife.age,city,wife.city from profile2;
+
+hive> select * from couples;
+OK
+Ravi    Rani    30      25      hyd     del
+Raghu   Sailu   35      23      del     hyd
+
+# Handling MAP - collection of key-value pair
+cat prof3
+Ravi,30,btech$89#mtech$79#mba$60,hyd
+Raghu,35,bsc$80#msc$70,del
+
+create table profile3 (name string, age int, qual map<string,int>, city string)
+row format delimited
+fields terminated by ','
+collection items terminated by '#'
+map keys terminated by '$';
+
+load data local inpath 'prof3' into table profile3;
+
+hive> select * from profile3;
+OK
+Ravi    30      {"btech":89,"mtech":79,"mba":60}        hyd
+Raghu   35      {"bsc":80,"msc":70}     del
+
+# get a map element
+hive> select name,qual['btech'] from profile3;
+OK
+Ravi    89
+Raghu   NULL
+
+# get all the map keys
+hive> select map_keys(qual) from profile3;
+OK
+["btech","mtech","mba"]
+["bsc","msc"]
+
+# get all values
+hive> select map_values(qual) from profile3;
+OK
+[89,79,60]
+[80,70]hive> select name,map_keys(qual), map_values(qual) from profile3;
+OK
+Ravi    ["btech","mtech","mba"] [89,79,60]
+Raghu   ["bsc","msc"]   [80,70]
+
+
+hive> select name,map_keys(qual), map_values(qual) from profile3;
+OK
+Ravi    ["btech","mtech","mba"] [89,79,60]
+Raghu   ["bsc","msc"]   [80,70]
+
+create table infos(name string, q array<string>, p array<int>);
+
+hive> select * from infos;
+OK
+Ravi    ["btech","mtech","mba"] [89,79,60]
+Raghu   ["bsc","msc"]   [80,70]
+
+hive> select name,myq from infos lateral view explode(q) ql as myq;
+OK
+Ravi    btech
+Ravi    mtech
+Ravi    mba
+Raghu   bsc
+Raghu   msc
+
+hive> select name,myp from infos lateral view explode(p) pl as myp;
+OK
+Ravi    89
+Ravi    79
+Ravi    60
+Raghu   80
+Raghu   70
+
+# the below would be an invalid statement, as 2 UDTFs can not be done in a single statement 
+hive> select name,myq,myp from infos
+    > lateral view explode(q) ql as myq, explode(p) pl as myp;
+FAILED: ParseException line 2:42 missing EOF at '(' near 'explode'
+
+hive> select explode(p) as p, explode(q) as q from infos;
+FAILED: SemanticException 1:24 Only a single expression in the SELECT clause is supported with UDTF's. Error encountered near token 'q'
+
+# the below is a way to handle multiple collections, but it gives redundant catresian product
+# hence we would need to develop our own UDF to handle the situation of multiple collections
+
+hive> select name,myq,myp from infos
+    > lateral view explode(q) ql as myq
+    > lateral view explode(p) pl as myp;
+OK
+Ravi    btech   89
+Ravi    btech   79
+Ravi    btech   60
+Ravi    mtech   89
+Ravi    mtech   79
+Ravi    mtech   60
+Ravi    mba     89
+Ravi    mba     79
+Ravi    mba     60
+Raghu   bsc     80
+Raghu   bsc     70
+Raghu   msc     80
+Raghu   msc     70
