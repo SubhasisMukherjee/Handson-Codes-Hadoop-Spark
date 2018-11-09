@@ -1,0 +1,34 @@
+create table profile1(id int, name string, age int, qual array<string>, city string)
+row format delimited
+fields terminated by ','
+collection items terminated by '#';
+
+load data local inpath 'prof1' into table profile1;
+
+hive> select * from profile1;
+OK
+101     Ravi    30      ["btech","mtech","phd"] hyd
+102     Rani    25      ["bsc","msc","mtech"]   del
+
+hive> select name, qual[0] from profile1;
+OK
+Ravi    btech
+Rani    bsc
+
+hive> select name, size(qual) from profile1;
+OK
+Ravi    3
+Rani    3
+
+# flatten elements. explode() flatten array elements into different rows
+hive> select explode(qual) as q from profile1;
+OK
+btech
+mtech
+phd
+bsc
+msc
+mtech
+
+create table qtab(qual string);
+insert into table qtab select explode(qual) as q from profile1; 
