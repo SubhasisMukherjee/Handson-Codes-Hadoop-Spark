@@ -1,0 +1,25 @@
+simple datatype:
+int
+long
+float
+double
+string
+boolean
+date
+timestamp
+
+complex data type (collection):
+array
+struct
+map
+
+array: collection of homogeneous items, i.e. items whose purpose are same
+qual : ['btech','mtech','phd']
+
+struct: collection of heterogeneous items i.e. items whose purpose are different
+info : <ravi,25,hyd,btech>
+
+map: collection of key-value pair
+qual : {btech:2011, mtech:2013,phd:2017}
+
+
