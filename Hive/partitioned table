@@ -1,0 +1,125 @@
+Partitioned
+Non-partitioned
+
+by default, table in non-partitioned
+table is a directory in hdfs, partition is a subdirectory in table directory
+adv of partition -> no need to scan all the table data
+
+create table emp (id int, name string, sal int, sex string, dno int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'emp' into table emp;
+load data local inpath 'emp2' into table emp;
+load data local inpath 'emp3' into table emp;
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/emp
+Found 3 items
+-rwxrwxrwx   3 subhtech099501 hadoop        100 2018-11-10 02:51 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/emp/emp
+-rwxrwxrwx   3 subhtech099501 hadoop         36 2018-11-10 02:51 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/emp/emp2
+-rwxrwxrwx   3 subhtech099501 hadoop         81 2018-11-10 02:51 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/emp/emp3
+
+all the above are files, there are no subdirectories, as there is no partition
+
+# create partitioned table, the below table will have total 6 columns, 5 physical and 1 logical (partition col)
+create table epart (id int, name string, sal int, sex string, dno int)
+partitioned by (s string);
+
+insert overwrite table epart 
+partition (s='f')
+select * from emp where sex = 'f';
+
+insert overwrite table epart 
+partition (s='m')
+select * from emp where sex = 'm';
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/epart
+Found 2 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-10 03:00 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/epart/s=f
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-10 03:01 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/epart/s=m
+[subhtech099501@ip-172-31-38-146 ~]$
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/epart/s=f
+Found 1 items
+-rwxrwxrwx   3 subhtech099501 hadoop        102 2018-11-10 03:00 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/epart/s=f/000000_0
+
+for a query, select * from epart where sex = 'm', it will read all partitions, as sex is not partition column
+for a query, select * from epart where s = 'm', it will read only s='m' partitions
+
+# partition on dept no
+create table eparts (id int, name string, sal int, sex string, dno int)
+partitioned by (d int)
+row format delimited
+fields terminated by ',';
+
+insert overwrite table eparts
+partition (d=11)
+select * from emp where dno = 11;
+
+insert overwrite table eparts
+partition (d=12)
+select * from emp where dno = 12;
+
+insert overwrite table eparts
+partition (d=13)
+select * from emp where dno = 13;
+
+# directory structure
+/app
+  /hive
+    /warehouse
+      /subhtech099501.db
+        /epart
+          /d=11/000000_0
+          /d=12/000000_0
+          /d=13/000000_0
+          
+by the above process, for each partition, we need to manually populate the partition. for large no of partitions, the above process
+is not feasible. Hence we need dynamic partition, where partition would be created and loaded on the fly, while loading.
+
+# partition tables can be created using multiple columns
+create table mpart (id int, name string, sal int, sex string, dno int)
+partitioned by (d int, s string);
+
+insert overwrite table mpart
+partition (d=11,s='f')
+select * from emp where dno=11 and sex='f';
+
+insert overwrite table mpart
+partition (d=11,s='m')
+select * from emp where dno=11 and sex='m';
+
+insert overwrite table mpart
+partition (d=12,s='f')
+select * from emp where dno=12 and sex='f';
+
+insert overwrite table mpart
+partition (d=12,s='m')
+select * from emp where dno=12 and sex='m';
+
+insert overwrite table mpart
+partition (d=13,s='f')
+select * from emp where dno=13 and sex='f';
+
+insert overwrite table mpart
+partition (d=13,s='m')
+select * from emp where dno=13 and sex='m';
+
+# directory structure
+/app
+  /hive
+    /warehouse
+      /subhtech099501.db
+        /mpart
+          /d=11
+            /s=f/000000_0
+            /s=m/000000_0
+          /d=12
+            /s=f/000000_0
+            /s=m/000000_0
+          /d=13
+            /s=f/000000_0
+            /s=m/000000_0
+    
+
+    
