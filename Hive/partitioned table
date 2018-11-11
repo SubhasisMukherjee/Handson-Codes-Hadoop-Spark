@@ -122,4 +122,261 @@ select * from emp where dno=13 and sex='m';
             /s=m/000000_0
     
 
-    
+------------------------------------------------------------------------------------------------------------------------
+
+
+# DYNAMIC PARTITIONING
+create table dpart (id int, name string, sal int, sex string, dno int)
+partitioned by (d int, s string)
+row format delimited
+fields terminated by ',';
+
+# Enable dynamic loading feature, which is by default disabled
+set hive.exec.dynamic.partition = true;
+# above command will make all the partions dynamic leaving apart the primary partition. to make that dynamic, need below command
+set hive.exec.dynamic.partition.mode = nonstrict;
+
+# need to provide extra columns in the select list to 
+hive> insert overwrite table dpart
+    > partition(d,s)
+    > select * from emp;
+FAILED: SemanticException [Error 10044]: Line 1:23 Cannot insert into target table because column number/types are different 's': Table insclause-0 has 7 columns, but query has 5 columns.
+
+# to handle this, need to give 7 columns
+insert overwrite table dpart
+partition(d,s)
+select id,name,sal,sex,dno,dno,sex from emp;
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart
+Found 3 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=11
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=12
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=13
+[subhtech099501@ip-172-31-38-146 ~]$ hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=11
+Found 1 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=11/s=m
+[subhtech099501@ip-172-31-38-146 ~]$ hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=12
+Found 2 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=12/s=f
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=12/s=m
+[subhtech099501@ip-172-31-38-146 ~]$ hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=13
+Found 2 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=13/s=f
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 05:28 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/dpart/d=13/s=m
+
+# to take adv of partitioning, need to give partitioning columns in where clause only
+select * from dpart where dno=13 and sec='m' --> this will not scan the partitions, but will scan the whole table,
+bacause dno and sex are not partition columns
+to use partitioning, we need to use partitioning columns
+select * from dpart where d=13 and s='m'
+
+ cat sales
+01/01/2011,45000
+01/01/2011,46000
+01/23/2011,70000
+02/01/2011,45000
+03/01/2011,46000
+03/23/2011,90000
+04/01/2011,45000
+04/01/2011,45000
+05/23/2011,70000
+06/01/2011,45000
+06/01/2011,46000
+06/23/2011,70000
+07/01/2011,45000
+08/01/2011,46000
+08/23/2011,70000
+09/01/2011,45000
+10/01/2011,46000
+10/23/2011,70000
+11/01/2011,45000
+11/01/2011,46000
+11/23/2011,70000
+12/01/2011,45000
+12/01/2011,46000
+12/23/2011,70000hive> select * from raw2;
+OK
+["01","01","2011"]      45000
+["01","01","2011"]      46000
+["01","23","2011"]      70000
+["02","01","2011"]      45000
+["03","01","2011"]      46000
+["03","23","2011"]      90000
+["04","01","2011"]      45000
+["04","01","2011"]      45000
+["05","23","2011"]      70000
+["06","01","2011"]      45000
+["06","01","2011"]      46000
+["06","23","2011"]      70000
+["07","01","2011"]      45000
+["08","01","2011"]      46000
+["08","23","2011"]      70000
+["09","01","2011"]      45000
+["10","01","2011"]      46000
+["10","23","2011"]      70000
+["11","01","2011"]      45000
+["11","01","2011"]      46000
+["11","23","2011"]      70000
+["12","01","2011"]      45000
+["12","01","2011"]      46000
+["12","23","2011"]      70000
+
+select concat(dt[2],'-',dt[0],'-',dt[1]) from raw2;
+
+
+create table raw(dt string, amt int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'sales' into table raw;
+
+create table raw2(dt array<string>,amt int);
+
+insert into table raw2 select split(dt,'/'),amt from raw;
+
+hive> select * from raw2;
+OK
+["01","01","2011"]      45000
+["01","01","2011"]      46000
+["01","23","2011"]      70000
+["02","01","2011"]      45000
+["03","01","2011"]      46000
+["03","23","2011"]      90000
+["04","01","2011"]      45000
+["04","01","2011"]      45000
+["05","23","2011"]      70000
+["06","01","2011"]      45000
+["06","01","2011"]      46000
+["06","23","2011"]      70000
+["07","01","2011"]      45000
+["08","01","2011"]      46000
+["08","23","2011"]      70000
+["09","01","2011"]      45000
+["10","01","2011"]      46000
+["10","23","2011"]      70000
+["11","01","2011"]      45000
+["11","01","2011"]      46000
+["11","23","2011"]      70000
+["12","01","2011"]      45000
+["12","01","2011"]      46000
+["12","23","2011"]      70000
+
+select concat(dt[2],'-',dt[0],'-',dt[1]), amt from raw2;
+
+hive> select concat(dt[2],'-',dt[0],'-',dt[1]), amt from raw2;
+OK
+2011-01-01      45000
+2011-01-01      46000
+2011-01-23      70000
+2011-02-01      45000
+2011-03-01      46000
+2011-03-23      90000
+2011-04-01      45000
+2011-04-01      45000
+2011-05-23      70000
+2011-06-01      45000
+2011-06-01      46000
+2011-06-23      70000
+2011-07-01      45000
+2011-08-01      46000
+2011-08-23      70000
+2011-09-01      45000
+2011-10-01      46000
+2011-10-23      70000
+2011-11-01      45000
+2011-11-01      46000
+2011-11-23      70000
+2011-12-01      45000
+2011-12-01      46000
+2011-12-23      70000
+
+create table rawx like raw;
+
+# create data for 3 years
+insert overwrite table rawx
+select dt,amt from raw
+union all
+select concat(substr(dt,1,9),'2') as dt,amt+2000 as amt from raw
+union all
+select concat(substr(dt,1,9),'3') as dt,amt+10000 as amt from raw;
+
+# split the date by '/', so that it can be reformatted to expected hive data format of yyyy-dd-mm 
+insert overwrite table raw2 select split(dt,'/'),amt from rawx;
+
+# create table to hold hive date formatted records
+create table sales(dt string, amt int);
+
+insert into table sales 
+select concat(dt[2],'-',dt[0],'-',dt[1]),amt from raw2;
+
+
+# create partitioned table
+create table spart(dt string, amt int)
+partitioned by (y int,m int,d int)
+row format delimited
+fields terminated by ',';
+
+# setting dynamic partitioning options
+set hive.exec.dynamic.partition = true;
+set hive.exec.dynamic.partition.mode = nonstrict;
+set hive.exec.max.dynamic.partitions.pernode = 10000; -->sets max number of pertitions per slave node, default limit is 100
+set hive.exec.max.dynamic.partitions = 100000;   --> sets max number of partitions across whole cluster
+
+# load data into partitions dynamically
+insert overwrite table spart
+partition(y,m,d)
+select dt,amt,year(dt),month(dt),day(dt) from sales;
+
+hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart
+Found 3 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2011
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2012
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013
+
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013
+Found 12 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=1
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=10
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=11
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=12
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=2
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=3
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=4
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=5
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=6
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=7
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=8
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=9
+
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=9
+Found 1 items
+drwxrwxrwx   - subhtech099501 hadoop          0 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=9/d=1
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=9/d=1
+Found 1 items
+-rwxrwxrwx   3 subhtech099501 hadoop         17 2018-11-11 08:55 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=9/d=1/000000_0
+
+hadoop fs -cat hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/spart/y=2013/m=9/d=1/000000_0
+2013-09-01,55000
+
+# if we give the following query, it will scan the entire table, as sales is not a partitioned table
+select * from sales where dt = '2018-02-10';
+
+# hence we create a partitioned table spart and query that, in which case it will only query 1 partition
+select * from spart where y=2018 and m=2 and d=10;
+
+
+
+
+
+
+
+
+
+
+
+
+
