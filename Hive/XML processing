@@ -1,0 +1,95 @@
+<rec>
+  <name>Ravi</name>
+  <age>25</age>
+</rec>
+<rec>
+  <name>Rani</name>
+  <sex>F</sex>
+</rec>
+
+if above file is loaded into hive table, there would be 8 records
+we need to treansform each vertical xml into horizontal xml record [using mapreduce/spark]
+
+transformed file xml1:
+-------------------
+<rec><name>Ravi</name><age>25</age></rec>
+<rec><name>Rani</name><sex>F</sex></rec>
+<rec><name>Giri</name><age>35</age><sex>M</sex></rec>
+
+create table raw (line string);
+load data local inpath 'xml1' into table raw;
+
+hive> select * from raw;
+OK
+<rec><name>Ravi</name><age>25</age></rec>
+<rec><name>Rani</name><sex>F</sex></rec>
+<rec><name>Giri</name><age>35</age><sex>M</sex></rec>
+
+
+select xpath_string(line,'rec/name') from raw;
+select xpath_int(line,'rec/age') from raw;
+
+create table info(name string,age int,sex string)
+row format delimited
+fields terminated by ',';
+
+insert into table info
+select xpath_string(line,'rec/name'),
+       xpath_int(line,'rec/age'),
+       xpath_string(line,'rec/sex')
+from raw;
+
+hive> select * from info;
+OK
+Ravi    25
+Rani    0       F
+Giri    35      M
+
+---------------------------------------------------
+
+<rec>
+  <name>
+    <fname>Siri</fname>
+    <lname>veni</lname>
+  </name>
+  <age>23</age>
+  <contact>
+    <email>
+      <personal>siri@gmail.com</personal>
+      <official>siri@ibm.com</official>
+    </email>
+    <phone>
+      <moble>12345</mobile>
+      <office>98765</office>
+      <residence>44444</residence>
+    </phone>
+  </contact>
+  <city>Hyderbad</city>
+</rec>
+
+xml2 flat format
+-----------------
+<rec><name><fname>Siri</fname><lname>veni</lname></name><age>23</age><contact><email><personal>siri@gmail.com</personal><official>siri@ibm.com</official></email><phone><mobile>12345</mobile><office>98765</office><residence>44444</residence></phone></contact><city>Hyderbad</city></rec>
+
+create table raw2 (line string);
+load data local inpath 'xml2' into table raw2;
+
+create table info2 (fname string, lname string, age string, personal_email string, official_email string, mobile string, 
+office_phone string, residence_phone string, city string);
+
+insert overwrite table info2
+select xpath_string(line,'rec/name/fname'),
+       xpath_string(line,'rec/name/lname'),
+       xpath_int(line,'rec/age'),
+       xpath_string(line,'rec/contact/email/personal'),
+       xpath_string(line,'rec/contact/email/official'),
+       xpath_string(line,'rec/contact/phone/mobile'),
+       xpath_string(line,'rec/contact/phone/office'),
+       xpath_string(line,'rec/contact/phone/residence'),
+       xpath_string(line,'rec/city')
+from raw2;       
+
+hive> select * from info2;
+OK
+Siri    veni    23      siri@gmail.com  siri@ibm.com    12345   98765   44444   Hyderbad
+
