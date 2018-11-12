@@ -1,0 +1,129 @@
+# on creating partitions, we get subdirectories created under main table directory
+# on creating bucket, no such directory is created. the main datafile is broken into
+# multiple data files and all of them reside inside the main table directory
+
+set hive.enforce.bucketing = true;
+
+cat transactions
+p1,1000
+p2,6000
+p3,4000
+p1,1200
+p1,1300
+p2,6000
+p1,1000
+p2,6000
+p3,4000
+p1,1200
+p1,1300
+p2,6000
+p1,1000
+p2,6000
+p3,4000
+p1,1200
+p1,1300
+p2,6000
+p1,1000
+p2,6000
+p3,4000
+p1,1200
+p1,1300
+p2,6000
+p5,9000
+p4,9000
+p4,10000
+p4,4000
+p5,7000
+
+create table trans (pid string, amt int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'transactions' into table trans;
+
+# divide the above table data into 3 buckets
+create table bucks (pid string, amt int)
+clustered by (pid) into 3 buckets
+row format delimited
+fields terminated by ',';
+
+insert overwrite table bucks select * from trans;
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks
+Found 3 items
+-rw-r--r--   3 subhtech099501 hadoop         80 2018-11-12 02:06 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks/000000_0
+-rw-r--r--   3 subhtech099501 hadoop         32 2018-11-12 02:06 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks/000001_0
+-rw-r--r--   3 subhtech099501 hadoop        121 2018-11-12 02:06 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks/000002_0
+
+hadoop fs -cat hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks/000000_0
+p5,7000
+p2,6000
+p2,6000
+p2,6000
+p5,9000
+p2,6000
+p2,6000
+p2,6000
+p2,6000
+p2,6000
+
+hadoop fs -cat hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks/000001_0
+p3,4000
+p3,4000
+p3,4000
+p3,4000
+
+hadoop fs -cat hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/bucks/000002_0
+p1,1000
+p1,1200
+p1,1000
+p1,1300
+p1,1300
+p1,1200
+p4,4000
+p4,9000
+p1,1000
+p4,10000
+p1,1300
+p1,1200
+p1,1000
+p1,1300
+p1,1200
+
+# Table bucketed by multiple columns
+create table ebucks ( id int , name string, sal int, sex string, dno int)
+clustered by (dno,sex)
+into 2 buckets
+row format delimited
+fields terminated by ',';
+
+insert overwrite table ebucks select * from emp;
+
+hadoop fs -ls hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/ebucks
+Found 2 items
+-rw-r--r--   3 subhtech099501 hadoop        155 2018-11-12 02:25 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/ebucks/000000_0
+-rw-r--r--   3 subhtech099501 hadoop         62 2018-11-12 02:25 hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/ebucks/000001_0
+
+hadoop fs -cat hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/ebucks/000000_0
+303,hhg,200000,m,11
+302,iop,100000,f,12
+301,aaa,900000,m,11
+202,xx,90000,m,13
+201,ee,80000,f,12
+105,eee,20000,m,11
+102,bbbbb,50000,f,12
+101,aaa,40000,m,11
+
+
+hadoop fs -cat hdfs://ip-172-31-35-141.ec2.internal:8020/apps/hive/warehouse/subhtech099501.db/ebucks/000001_0
+304,ghgh,300000,f,13
+104,ddddd,100000,f,13
+103,ccc,90000,m,12
+
+
+
+
+
+
+
+
