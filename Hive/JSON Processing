@@ -1,0 +1,54 @@
+sample json data
+
+{
+  "Name":"Ravi",
+  "Age":25
+}
+{
+  "Name":"Rani",
+  "City":"Hyd"
+}
+
+Above data if loaded in hive, would be loaded as 8 rows. Hence we need to convert it into horizontal record using spark or MR
+
+json1
+--------
+{"Name":"Ravi","Age":25}
+{"Name":"Rani","City":"Hyd"}
+
+create table raw (line string);
+load data local inpath 'json1' into table raw;
+
+hive> select * from raw;
+OK
+{"Name":"Ravi","Age":25}
+{"Name":"Rani","City":"Hyd"}
+
+2 functions to extract json data
+    1) get_json_object()  --> udf
+    2) json_tuple()  --> udtf
+
+hive> select get_json_object(line,'$.Name') from raw;
+OK
+Ravi
+Rani
+
+hive> select get_json_object(line,'$.Name'),
+    > get_json_object(line,'$.Age'),
+    > get_json_object(line,'$.City') from raw;
+OK
+Ravi    25      NULL
+Rani    NULL    Hyd
+
+
+hive> select x.* from raw
+    > lateral view json_tuple(line,'Name','Age','City') x as n,a,c;
+OK
+Ravi    25      NULL
+Rani    NULL    Hyd
+
+
+
+
+
+
