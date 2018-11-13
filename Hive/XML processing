@@ -93,3 +93,154 @@ hive> select * from info2;
 OK
 Siri    veni    23      siri@gmail.com  siri@ibm.com    12345   98765   44444   Hyderbad
 
+---------------------------------------------------------------------
+
+# Handling collection
+cat xml3
+<rec><name>Ravi</name><qual>btech</qual><qual>mtech</qual></rec>
+<rec><name>Giri</name><qual>btech</qual><qual>mtech</qual><qual>phd</qual></rec>
+<rec><name>Veni</name><qual>bsc</qual><qual>msc</qual><qual>mtech</qual></rec>
+
+create table xmlraw(line string);
+
+load data local inpath 'xml3' into table xmlraw;
+
+hive> select * from xmlraw;
+OK
+<rec><name>Ravi</name><qual>btech</qual><qual>mtech</qual></rec>
+<rec><name>Giri</name><qual>btech</qual><qual>mtech</qual><qual>phd</qual></rec>
+<rec><name>Veni</name><qual>bsc</qual><qual>msc</qual><qual>mtech</qual></rec>
+Time taken: 0.309 seconds, Fetched: 3 row(s)
+
+hive> select xpath(line,'rec/qual/text()') from xmlraw;
+OK
+["btech","mtech"]
+["btech","mtech","phd"]
+["bsc","msc","mtech"]
+
+create table raw2 (name string, qual array<string>);
+
+insert into table raw2
+select xpath_string(line,'rec/name'),
+       xpath(line,'rec/qual/text()') from xmlraw;
+
+hive> select * from raw2;
+OK
+Ravi    ["btech","mtech"]
+Giri    ["btech","mtech","phd"]
+Veni    ["bsc","msc","mtech"]
+
+
+hive> select name,myq from raw2
+    > lateral view explode(qual) q as myq;
+OK
+Ravi    btech
+Ravi    mtech
+Giri    btech
+Giri    mtech
+Giri    phd
+Veni    bsc
+Veni    msc
+Veni    mtech
+
+# processing purchase data
+cat xml4
+<tr><cid>101</cid><pr>1000</pr><pr>2000</pr><pr>4000</pr></tr>
+<tr><cid>102</cid><pr>3000</pr><pr>5000</pr></tr>
+<tr><cid>101</cid><pr>5000</pr></tr>
+
+create table sraw(line string);
+load data local inpath 'xml4' into table sraw;
+
+hive> select * from sraw;
+OK
+<tr><cid>101</cid><pr>1000</pr><pr>2000</pr><pr>4000</pr></tr>
+<tr><cid>102</cid><pr>3000</pr><pr>5000</pr></tr>
+<tr><cid>101</cid><pr>5000</pr></tr>
+
+create table sraw2(cid int, pr array<string>);
+insert into table sraw2
+select xpath_int(line,'tr/cid'),
+       xpath(line,'tr/pr/text()') from sraw;
+
+hive> select * from sraw2;
+OK
+101     ["1000","2000","4000"]
+102     ["3000","5000"]
+101     ["5000"]
+
+create table sales2 (cid int, price int)
+row format delimited
+fields terminated by ',';
+
+insert into table sales2
+select cid,mypr from sraw2
+       lateral view explode(pr) p as mypr;
+
+hive> select * from sales2;
+OK
+101     1000
+101     2000
+101     4000
+102     3000
+102     5000
+101     5000
+
+create table result (cid int, tot int);
+
+insert into table result
+select cid,sum(price) from sales2 group by cid;
+
+
+hive> select * from result;
+OK
+101     12000
+102     8000
+
+# how to extract xml tags data if parameters are paassed in the tags
+cat xml5
+<tr><cid>101</cid><pr id="p1">2000</pr><pr id="p7">4000</pr></tr>
+<tr><cid>102</cid><pr id="p7">4000</pr><pr id="p2">5000</pr></tr>
+
+create table xxraw(line string);
+load data local inpath 'xml5' into table xxraw;
+
+hive> select * from xxraw;
+OK
+<tr><cid>101</cid><pr id="p1">2000</pr><pr id="p7">4000</pr></tr>
+<tr><cid>102</cid><pr id="p7">4000</pr><pr id="p2">5000</pr></tr>
+
+hive> select xpath(line,'tr/pr/@id') from xxraw;
+OK
+["p1","p7"]
+["p7","p2"]
+
+
+hive> select xpath_int(line,'tr/cid'),
+    > xpath(line,'tr/pr/@id'),
+    > xpath(line,'tr/pr/text()') from xxraw;
+OK
+101     ["p1","p7"]     ["2000","4000"]
+102     ["p7","p2"]     ["4000","5000"]
+
+create table xxraw2 (cid int, prd array<string>, prc array<string>);
+
+insert into xxraw2
+select xpath_int(line,'tr/cid'),
+       xpath(line,'tr/pr/@id'),
+       xpath(line,'tr/pr/text()') from xxraw; 
+
+
+hive> select * from xxraw2;
+OK
+101     ["p1","p7"]     ["2000","4000"]
+102     ["p7","p2"]     ["4000","5000"]
+
+create table xxraw3(cid int, prd int, prc int);
+
+insert into xxraw3
+select cid, myprd, myprc from xxraw2
+lateral view explode(prd) d as myprd
+lateral view explode(prc) c as myprc;  --> not working as expected
+
+
