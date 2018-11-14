@@ -11,44 +11,97 @@ sample json data
 
 Above data if loaded in hive, would be loaded as 8 rows. Hence we need to convert it into horizontal record using spark or MR
 
-json1
---------
-{"Name":"Ravi","Age":25}
-{"Name":"Rani","City":"Hyd"}
+cat json1
+{"name":"Ravi","sge":25}
+{"name":"Rani","city":"Hyd"}
+{"name":"Mani","age":24,"city":"Del"}
+
 
 create table raw (line string);
 load data local inpath 'json1' into table raw;
 
 hive> select * from raw;
 OK
-{"Name":"Ravi","Age":25}
-{"Name":"Rani","City":"Hyd"}
+{"name":"Ravi","sge":25}
+{"name":"Rani","city":"Hyd"}
+{"name":"Mani","age":24,"city":"Del"}
+
 
 2 functions to extract json data
     1) get_json_object()  --> udf
     2) json_tuple()  --> udtf
 
-hive> select get_json_object(line,'$.Name') from raw;
+hive> select get_json_object(line,'$.name') from raw;
 OK
 Ravi
 Rani
+Mani
 
-hive> select get_json_object(line,'$.Name'),
-    > get_json_object(line,'$.Age'),
-    > get_json_object(line,'$.City') from raw;
+hive> select get_json_object(line,'$.name'),
+    > get_json_object(line,'$.age'),
+    > get_json_object(line,'$.city') from raw;
 OK
 Ravi    25      NULL
 Rani    NULL    Hyd
+Mani    24      Del
 
 
 hive> select x.* from raw
-    > lateral view json_tuple(line,'Name','Age','City') x as n,a,c;
+    > lateral view json_tuple(line,'name','age','city') x as n,a,c;
 OK
 Ravi    25      NULL
 Rani    NULL    Hyd
+Mani    24      Del
 
+create table info (name string, age int, city string);
 
+insert into table info
+select x.* from raw
+lateral view json_tuple(line,'name','age','city') x as n,a,c;
 
+hive> select * from info;
+OK
+Ravi    25      NULL
+Rani    NULL    Hyd
+Mani    24      Del
 
+----------------------------------------------------
 
+cat json2
+{"name":"Ravi","age":25,"wife":{"name":"Rani","age":24,"city":"hyd"},"city":"del"}
+{"name":"Kiran","age":30,"wife":{"name":"Veni","qual":"btech","city":"hyd"},"city":"hyd"}
 
+create table jraw(line string);
+
+load data local inpath 'json2' into table jraw;
+
+hive> select * from jraw;
+OK
+{"name":"Ravi","age":25,"wife":{"name":"Rani","age":24,"city":"hyd"},"city":"del"}
+{"name":"Kiran","age":30,"wife":{"name":"Veni","qual":"btech","city":"hyd"},"city":"hyd"}
+
+create table raw2 (name string, age int, wife string, city string);
+
+insert into table raw2
+select x.* from jraw
+lateral view json_tuple(line,'name','age','wife','city') x as n,a,w,c;
+
+hive> select * from raw2;
+OK
+Ravi    25      {"name":"Rani","age":24,"city":"hyd"}   del
+Kiran   30      {"name":"Veni","qual":"btech","city":"hyd"}     hyd
+
+create table jinfo(hname string, wname string, hage int, wage int, hcity string, wcity string, wqual string)
+row format delimited
+fields terminated by ',';
+
+insert overwrite table jinfo
+select name,get_json_object(wife,'$.name'),
+       age,get_json_object(wife,'$.age'),
+       city, get_json_object(wife,'$.city'),
+       get_json_object(wife,'$.qual') from raw2;
+
+hive> select * from jinfo;
+OK
+Ravi    Rani    25      24      del     hyd     NULL
+Kiran   Veni    30      NULL    hyd     hyd     btech
