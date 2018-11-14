@@ -1,1 +1,79 @@
 
+Typical url data
+------------------
+<host>/<path>?<query string>
+
+cat urls
+https://training.com/bigdata/hadoop?id=101&name=Giri&age=23&city=hyd
+https://training.com/bigdata/spark?id=102&name=diri&sex=f&city=del
+https://training.com/bigdata/spark?id=103&name=xiri&age=33&sex=f
+https://training.com/bigdata/spark?id=104&name=miri&age=253sex=m
+
+To parse URL data, 2 functions are there - 
+1) parse_url
+2) parse_url_tuple
+
+create table raw (line string);
+
+load data local inpath 'urls' into table raw;
+
+hive> select * from raw;
+OK
+https://training.com/bigdata/hadoop?id=101&name=Giri&age=23&city=hyd
+https://training.com/bigdata/spark?id=102&name=diri&sex=f&city=del
+https://training.com/bigdata/spark?id=103&name=xiri&age=33&sex=f
+https://training.com/bigdata/spark?id=104&name=miri&age=253sex=m
+
+hive> select parse_url(line,'HOST'),
+    >        parse_url(line,'PATH'),
+    >        parse_url(line,'QUERY')
+    > from raw;
+OK
+training.com    /bigdata/hadoop id=101&name=Giri&age=23&city=hyd
+training.com    /bigdata/spark  id=102&name=diri&sex=f&city=del
+training.com    /bigdata/spark  id=103&name=xiri&age=33&sex=f
+training.com    /bigdata/spark  id=104&name=miri&age=253sex=m
+
+hive> select x.* from raw
+    > lateral view parse_url_tuple(line,'HOST','PATH', 'QUERY') x as h,p,q;
+OK
+training.com    /bigdata/hadoop id=101&name=Giri&age=23&city=hyd
+training.com    /bigdata/spark  id=102&name=diri&sex=f&city=del
+training.com    /bigdata/spark  id=103&name=xiri&age=33&sex=f
+training.com    /bigdata/spark  id=104&name=miri&age=253sex=m
+
+
+create table raw2 (host string, path string, query string);
+
+insert into raw2
+select x.* from raw
+lateral view parse_url_tuple(line, 'HOST','PATH','QUERY') x as h,p,q;
+
+create table raw3 (host string, path array<string>, qmap map<string,string>);
+
+insert into table raw3
+select host,
+       split(path,'/'), 
+       str_to_map(query,'&','=')
+from raw2;
+
+hive> select * from raw3;
+OK
+training.com    ["","bigdata","hadoop"] {"id":"101","name":"Giri","age":"23","city":"hyd"}
+training.com    ["","bigdata","spark"]  {"id":"102","name":"diri","sex":"f","city":"del"}
+training.com    ["","bigdata","spark"]  {"id":"103","name":"xiri","age":"33","sex":"f"}
+training.com    ["","bigdata","spark"]  {"id":"104","name":"miri","age":"253sex=m"}
+
+create table info (host string, category string, course string, id int, name string, age int, sex string, city string);
+
+insert into table info
+select host, path[1], path[2], qmap['id'],qmap['id'],qmap['age'],qmap['sex'],qmap['city']
+from raw3;
+
+hive> select * from info;
+OK
+training.com    bigdata hadoop  101     101     23      NULL    hyd
+training.com    bigdata spark   102     102     NULL    f       del
+training.com    bigdata spark   103     103     33      f       NULL
+training.com    bigdata spark   104     104     NULL    NULL    NULL
+
