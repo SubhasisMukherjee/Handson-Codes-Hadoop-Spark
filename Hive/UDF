@@ -1,0 +1,4 @@
+1. first char upper, rest lower
+2. from salary to grade (A,B,C,D)
+3. from m/f to male/female
+4. from deptno to deptname
