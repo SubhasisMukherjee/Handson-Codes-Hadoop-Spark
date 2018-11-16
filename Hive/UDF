@@ -1,3 +1,54 @@
+hive> select * from emp_udf;
+OK
+10      RAVI    10000
+11      rAni    20000
+12      teja    20000
+13      Veja    30000
+
+# The purpose is to write a hive UDF such that it would convert the names as paragraph case.
+
+myudfhive.py
+------------
+import sys
+
+for line in sys.stdin:
+    line = line.strip()
+    #id,name,sal = line.split(',')
+    #fc = name[0]
+    #rest = name[1:]
+    fc = line[0]
+    rest = line[1:]
+    namen = fc.upper() + rest.lower()
+    #print(','.join([id,namen,sal))
+    sys.stdout.write(namen+'\n')
+
+# create a new table to store the new names
+create table emp_udf_out (name string);
+
+# Add python file to hive path
+hive> add file myudfhive.py;
+
+# call 'transform' 
+hive> select transform(name) using 'python myudfhive.py' as (name) from emp_udf;
+OK
+Ravi
+Rani
+Teja
+Veja
+
+# insert the same into table
+hive> insert into table emp_udf_out select transform(name) using 'python myudfhive.py' as (name) from emp_udf;
+
+hive> select * from emp_udf_out;
+OK
+Ravi
+Rani
+Teja
+Veja
+
+
+------------------------------------------------------------------------------------------------------------------
+
 1. first char upper, rest lower
 2. from salary to grade (A,B,C,D)
 3. from m/f to male/female
