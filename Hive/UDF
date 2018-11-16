@@ -49,7 +49,79 @@ Veja
 
 ------------------------------------------------------------------------------------------------------------------
 
+# Purpose is to implement the following
+
 1. first char upper, rest lower
 2. from salary to grade (A,B,C,D)
 3. from m/f to male/female
 4. from deptno to deptname
+
+# create data
+cat empdata
+raVi,10000,m,11
+RANI,20000,f,12
+reba,25000,f,13
+RAGHU,30000,m,14
+
+# create table and load data
+create table emp_udf (ename string, sal int, gender string, deptno int)
+row format delimited
+fields terminated by ',';
+
+load data local inpath 'empdata' into table emp_udf;
+
+hive> select * from emp_udf;
+OK
+raVi    10000   m       11
+RANI    20000   f       12
+reba    25000   f       13
+RAGHU   30000   m       14
+
+# create table to store final result
+create table emp_udf_out
+( name string, grade string, gender string, deptname string)
+row format delimited
+fields terminated by ',';
+
+# create UDF
+
+myhiveudf.py
+------------
+import sys
+
+for line in sys.stdin:
+    line = line.strip()
+    name,sal,gender,deptno = line.split(',')
+    # convert name
+    fc = name[0]
+    rest = name[1:]
+    namen = fc.upper() + rest.lower()
+    # convert to grade
+    if int(sal) > 25000:
+        grade = 'A'
+    elif int(sal) > 20000:
+        grade = 'B'
+    else:
+        grade = 'C'
+    # convert gender
+    if gender == 'm':
+        gender = 'male'
+    elif gender == 'f':
+        gender = 'female'
+    # convert deptno
+    if int(deptno) == 11:
+        deptname = 'Admin'
+    elif int(deptno) == 12:
+        deptname = 'HR'
+    else:
+        deptname = 'Others'
+    record = ','.join([namen,grade,gender,deptname])
+    sys.stdout.write(record+'\n')
+
+# add the python file to hive path
+hive> add file myhiveudf.py;
+
+# insert processed data into table 
+insert into table emp_udf_out
+select transform(ename, sal, gender, deptno) using 'python myhiveudf.py' as (name, grade, gender, deptname) from emp_udf;
+    
