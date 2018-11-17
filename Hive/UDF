@@ -91,7 +91,7 @@ import sys
 
 for line in sys.stdin:
     line = line.strip()
-    name,sal,gender,deptno = line.split(',')
+    name,sal,gender,deptno = line.split('\t')
     # convert name
     fc = name[0]
     rest = name[1:]
@@ -115,7 +115,7 @@ for line in sys.stdin:
         deptname = 'HR'
     else:
         deptname = 'Others'
-    record = ','.join([namen,grade,gender,deptname])
+    record = '\t'.join([namen,grade,gender,deptname])
     sys.stdout.write(record+'\n')
 
 # add the python file to hive path
@@ -125,3 +125,9 @@ hive> add file myhiveudf.py;
 insert into table emp_udf_out
 select transform(ename, sal, gender, deptno) using 'python myhiveudf.py' as (name, grade, gender, deptname) from emp_udf;
     
+hive> select * from emp_udf_out;
+OK
+Ravi    C       male    Admin
+Rani    C       female  HR
+Reba    B       female  Others
+Raghu   A       male    Others
